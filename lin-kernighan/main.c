@@ -2,17 +2,18 @@
 #include<stdlib.h>
 #include<string.h>
 #include<time.h>
-#include<my_conf.h>
-#include<lin_kernighan.h>
+#include "my_conf.h"
+#include "lin_kernighan.h"
 
 int main(int argc, char** argv) {
 	/*
 	 * Generate or read data set
 	 */
-	int x_of_cities[MAX_SIZE];
-	int y_of_cities[MAX_SIZE];
+	double x_of_cities[MAX_SIZE];
+	double y_of_cities[MAX_SIZE];
 	int size;
 	int i;
+	int temp;
 	int opt_tour[MAX_SIZE];
 	double opt_tour_len;
 	FILE* fin;
@@ -23,14 +24,13 @@ int main(int argc, char** argv) {
 		size = atoi(argv[2]);
 		srand(time(NULL));
 		for (i = 0; i < size; i++) {
-			x_of_cities[i] = rand() % MAX_X;
-			y_of_cities[i] = rand() % MAX_Y;
+			x_of_cities[i] = (double)(rand() % MAX_X);
+			y_of_cities[i] = (double)(rand() % MAX_Y);
 		}
 	} else {
-		fin = fopen(argv[2],"r");
-		fscanf(fin, "%d", &size);
-		for(i = 0; i < size; i++) {
-			fscanf(fin, "%d %d", x_of_cities + i, y_of_cities + i);
+		scanf("%d", &size);
+		for(i = 0; i < 16; i++) {
+			scanf("%d %lf %lf", &temp, x_of_cities + i, y_of_cities + i);
 		}
 	}
 	/*
@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
 	/*
 	 * output
 	 */
-	printf("Optimized tour:")
+	printf("Optimized tour:");
 	for(i = 0; i < size; i++) {
 		printf(" %d", opt_tour[i]);
 	}
