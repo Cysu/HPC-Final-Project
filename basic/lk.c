@@ -17,12 +17,19 @@ struct Tour {
 	double length;
 };
 
-Tour bestTour, cntTour;
+Tour bestTour, cntTour, gBestTour;
 
 int nearest[MAXN][MAXN];
 int t[MAXN];
 int inX[MAXN][MAXN];
 int inY[MAXN][MAXN];
+
+void swap(int* a, int* b) {
+	int temp;
+	temp = *a;
+	*a = *b;
+	*b = temp;
+}
 
 void shift(int* p, int j) {
 	int tmp[MAXN];
@@ -71,6 +78,7 @@ int findIndex(int* p, int u) {
 }
 
 void getInput() {
+	int i;
 	scanf("%d", &n);
 	for (i = 0; i < n; i ++) {
 		int id;
@@ -88,10 +96,21 @@ void getInput() {
 }
 
 void init() {
+	int i;
+	int pos;
 	bestTour.length = 0;
 	bestTour.p[0] = n;
 	for (i = 1; i <= n; i ++) {
 		bestTour.p[i] = i;
+		bestTour.length += dist[bestTour.p[i]][bestTour.p[i-1]];
+	}
+	srand(time(NULL));
+	for (i = 1; i < n; i++) {
+		pos = i + rand() % (n - i + 1);
+		swap(bestTour.p + i, bestTour.p + pos);
+	}
+	bestTour.p[0] = bestTour.p[n];
+	for (i = 1; i <= n; i++) {
 		bestTour.length += dist[bestTour.p[i]][bestTour.p[i-1]];
 	}
 }
@@ -182,6 +201,9 @@ int search(int i) {
 	}
 	return 0;
 }
+
+
+
 
 int main() {
 	// Get input.
