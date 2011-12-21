@@ -26,7 +26,6 @@ int main() {
 	for (i = 1; i <= n; i ++)
 		for (j = 1; j <= n; j ++) {
 			dist[i][j] = sqrt((x[i]-x[j])*(x[i]-x[j])+(y[i]-y[j])*(y[i]-y[j]));
-			dist[i][j] = (int)(dist[i][j] * 100);
 		}
 
 	head = 0;

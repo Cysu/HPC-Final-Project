@@ -3,7 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define MAXN 100
+#define MAXN 1000
 
 int n;
 double x[MAXN], y[MAXN];
@@ -17,7 +17,7 @@ struct Tour {
 	double length;
 };
 
-Tour bestTour;
+Tour bestTour, cntTour;
 
 int nearest[MAXN][MAXN];
 int t[MAXN];
@@ -63,24 +63,14 @@ void sort(int u, int l, int r) {
 	if (l < j) sort(u, l, j);
 }
 
-int findIndex(int u) {
+int findIndex(int* p, int u) {
 	int i;
 	for (i = 1; i <= n; i ++)
-		if (bestTour.p[i] == u) return i;
+		if (p[i] == u) return i;
 	return 0;
 }
 
-double calcPlan(int* p) {
-	double sum = 0;
-	p[0] = p[n];
-	for (i = 1; i <= n; i ++) {
-		sum += dist[p[i]][p[i-1]];
-	}
-	return sum;
-}
-
-int main() {
-	// Get input.
+void getInput() {
 	scanf("%d", &n);
 	for (i = 0; i < n; i ++) {
 		int id;
@@ -94,151 +84,125 @@ int main() {
 			dist[i][j] = sqrt((x[i]-x[j])*(x[i]-x[j])+(y[i]-y[j])*(y[i]-y[j]));
 			nearest[i][j] = j;
 		}
+	for (i = 1; i <= n; i ++) sort(i, 1, n);
+}
 
-	int u;
-	for (u = 1; u <= n; u ++) sort(u, 1, n);
-
-	// Initialize
+void init() {
 	bestTour.length = 0;
 	bestTour.p[0] = n;
 	for (i = 1; i <= n; i ++) {
 		bestTour.p[i] = i;
 		bestTour.length += dist[bestTour.p[i]][bestTour.p[i-1]];
 	}
-	double cntLength = bestTour.length;
+}
 
-	while (1) {
-		// Choose t[1].
-		int tourUpdate = 0;
-		printf("---------------------Update tour---------------------\n");
+int choose(int i, int lt) {
+	if (i > n) return 0;
+	// Choose xi(t[2i]).
+	t[2*i] = cntTour.p[lt - 1];
+	if (inY[t[2*i-1]][t[2*i]]) return 0;
+	inX[t[2*i-1]][t[2*i]] = 1;
+	inX[t[2*i]][t[2*i-1]] = 1;
+	reorg(cntTour.p, lt);
+	if (cntTour.length - dist[t[2*i-1]][t[2*i]] + dist[t[2*i]][t[1]] < bestTour.length) {
+		cntTour.length -= (dist[t[2*i-1]][t[2*i]] - dist[t[2*i]][t[1]]); 
+		bestTour = cntTour;
+		return 1;
+	}
+	// Choose yi(t[2i+1]).
+	int r, find = 0;
+	for (r = 2; r <= n; r ++) {
+		t[2*i+1] = nearest[t[2*i]][r];
+		if (dist[t[2*i-1]][t[2*i]] - dist[t[2*i]][t[2*i+1]] > 0 && !inX[t[2*i]][t[2*i+1]]) {
+			find = 1;
+			break;
+		}
+	}
+	if (!find) {
+		inX[t[2*i-1]][t[2*i]] = 0;
+		inX[t[2*i]][t[2*i-1]] = 0;
+		return 0;
+	}
+	inY[t[2*i]][t[2*i+1]] = 1;
+	inY[t[2*i+1]][t[2*i]] = 1;
+	lt = findIndex(cntTour.p, t[2*i+1]);
+	cntTour.length -= (dist[t[2*i-1]][t[2*i]] - dist[t[2*i]][t[2*i+1]]);
+	if (choose(i + 1, lt)) return 1;
+	else {
+		inY[t[2*i]][t[2*i+1]] = 0;
+		inY[t[2*i+1]][t[2*i]] = 0;
+		return 0;
+	}
+}
+
+int search(int i) {
+	if (i == 1) {
 		for (t[1] = 1; t[1] <= n; t[1] ++) {
-			printf("---------------------select another t1---------------------\n");
-			printf("t[1] = %d\n", t[1]);
-
-			// Initialize {X}, {Y}
 			memset(inX, 0, sizeof(inX));
 			memset(inY, 0, sizeof(inY));
-
-			// Find and shift
-			j = findIndex(t[1]);
+			j = findIndex(bestTour.p, t[1]);
 			shift(bestTour.p, j);
-
-			// TODO: Currently make t[2] = bestTour.p[2].
-			// t[2] can equal to bestTour.p[n], too.
 			t[2] = bestTour.p[2];
 			inX[t[1]][t[2]] = inX[t[2]][t[1]] = 1;
-
-			printf("t[2] = %d\n", t[2]);
-			printf("%0.5lf\n", bestTour.length);
-			for (i = 1; i <= n; i ++) printf("%d ", bestTour.p[i]);
-			printf("\nrealLen = %0.5lf\n", calcPlan(bestTour.p));
-
-			int inXbuf[MAXN][MAXN], inYbuf[MAXN][MAXN];
-			Tour bestBuf = bestTour;
-			memcpy(inXbuf, inX, sizeof(inX));
-			memcpy(inYbuf, inY, sizeof(inY));
-
-			// Choose y1(t[3]).
-			for (j = 2; j <= n; j ++) {
-				memcpy(inX, inXbuf, sizeof(inX));
-				memcpy(inY, inYbuf, sizeof(inY));
-				bestTour = bestBuf;
-				cntLength = bestTour.length;
-
-				t[3] = nearest[t[2]][j];
-				if (t[3] == t[2] || t[3] == t[1] || t[3] == bestTour.p[3]) continue;
-
-				printf("t[3] = %d\n", t[3]);
-
-				if (dist[t[1]][t[2]] - dist[t[2]][t[3]] <= 0) continue;
-				inY[t[2]][t[3]] = inY[t[3]][t[2]] = 1;
-				t[4] = bestTour.p[findIndex(t[3]) - 1];
-				inX[t[3]][t[4]] = inX[t[4]][t[3]] = 1;
-				cntLength -= (dist[t[1]][t[2]] - dist[t[2]][t[3]]);
-
-				printf("t[4] = %d\n", t[4]);
-
-				// Reorganize tour.
-				reorg(bestTour.p, findIndex(t[3]));
-				if (cntLength - dist[t[3]][t[4]] + dist[t[4]][t[1]] < bestTour.length) {
-					bestTour.length = cntLength - dist[t[3]][t[4]] + dist[t[4]][t[1]];
-					cntLength = bestTour.length;
-					tourUpdate = 1;
-					printf("%0.5lf\n", bestTour.length);
-					for (i = 1; i <= n; i ++) printf("%d ", bestTour.p[i]);
-					printf("\nrealLen = %0.5lf\n", calcPlan(bestTour.p));
-					break;
-				}
-
-				int inXbuf[MAXN][MAXN], inYbuf[MAXN][MAXN];
-				Tour bestBuf = bestTour;
-				memcpy(inXbuf, inX, sizeof(inX));
-				memcpy(inYbuf, inY, sizeof(inY));
-
-				// Choose y2(t[5]).
-				for (k = 2; k <= n; k ++) {
-					memcpy(inX, inXbuf, sizeof(inX));
-					memcpy(inY, inYbuf, sizeof(inY));
-					bestTour = bestBuf;
-					cntLength = bestTour.length;
-
-					t[5] = nearest[t[4]][k];
-					if (t[5] == t[4] || t[5] == t[3] || t[5] == t[2] || t[5] == t[1] || t[5] == bestTour.p[3]) continue;
-
-					printf("t[5] = %d\n", t[5]);
-
-					if (dist[t[3]][t[4]] - dist[t[4]][t[5]] <= 0 || inX[t[4]][t[5]]) continue;
-					inY[t[4]][t[5]] = inY[t[5]][t[4]] = 1;
-					int lt = findIndex(t[5]);
-					cntLength -= (dist[t[3]][t[4]] - dist[t[4]][t[5]]);
-
-					// Unique choice.
-					for (i = 3; i <= n; i ++) {
-						// Choose xi(t[2i]).
-						t[2*i] = bestTour.p[lt - 1];
-						if (inY[t[2*i-1]][t[2*i]]) break;
-						printf("t[%d] = %d\n", 2*i, t[2*i]);
-						inX[t[2*i-1]][t[2*i]] = 1;
-						inX[t[2*i]][t[2*i-1]] = 1;
-						reorg(bestTour.p, lt);
-						if (cntLength - dist[t[2*i-1]][t[2*i]] + dist[t[2*i]][t[1]] < bestTour.length) {
-							bestTour.length = cntLength - dist[t[2*i-1]][t[2*i]] + dist[t[2*i]][t[1]]; 
-							cntLength = bestTour.length;
-							tourUpdate = 1;
-							printf("%0.5lf\n", bestTour.length);
-							for (i = 1; i <= n; i ++) printf("%d ", bestTour.p[i]);
-							printf("\nrealLen = %0.5lf\n", calcPlan(bestTour.p));
-							break;
-						}
-						// Choose yi(t[2i+1]).
-						int r, find = 0;
-						for (r = 2; r <= n; r ++) {
-							t[2*i+1] = nearest[t[2*i]][r];
-							if (dist[t[2*i-1]][t[2*i]] - dist[t[2*i]][t[2*i+1]] > 0 && inX[t[2*i]][t[2*i+1]]) {
-								find = 1;
-								break;
-							}
-						}
-						if (!find) break;
-						printf("t[%d] = %d\n", 2*i+1, t[2*i+1]);
-						inY[t[2*i]][t[2*i+1]] = 1;
-						inY[t[2*i+1]][t[2*i]] = 1;
-						lt = findIndex(t[2*i+1]);
-						cntLength -= (dist[t[2*i-1]][t[2*i]] - dist[t[2*i]][t[2*i+1]]);
-					}
-					if (tourUpdate) break;
-				}
-				if (tourUpdate) break;
-			}
-			if (tourUpdate) break;
+			if (search(i + 1)) return 1;
 		}
-		if (!tourUpdate) break;
+	} else if (i == 2) {
+		for (j = 2; j <= n; j ++) {
+			cntTour = bestTour;
+			t[3] = nearest[t[2]][j];
+			if (t[3] == t[2] || t[3] == t[1] || t[3] == cntTour.p[3]) continue;
+			if (dist[t[1]][t[2]] - dist[t[2]][t[3]] <= 0) continue;
+			t[4] = cntTour.p[findIndex(cntTour.p, t[3]) - 1];
+			inY[t[2]][t[3]] = inY[t[3]][t[2]] = 1;
+			inX[t[3]][t[4]] = inX[t[4]][t[3]] = 1;
+			cntTour.length -= (dist[t[1]][t[2]] - dist[t[2]][t[3]]);
+			reorg(cntTour.p, findIndex(cntTour.p, t[3]));
+			if (cntTour.length - dist[t[3]][t[4]] + dist[t[4]][t[1]] < bestTour.length) {
+				cntTour.length -= (dist[t[3]][t[4]] - dist[t[4]][t[1]]);
+				bestTour = cntTour;
+				return 1;
+			}
+			if (search(i + 1)) return 1;
+			inY[t[2]][t[3]] = inY[t[3]][t[2]] = 0;
+			inX[t[3]][t[4]] = inX[t[4]][t[3]] = 0;
+		}
+	} else if (i == 3) {
+		Tour tourBuf = cntTour;
+		for (k = 2; k <= n; k ++) {
+			cntTour = tourBuf;
+			t[5] = nearest[t[4]][k];
+			if (t[5] == t[4] || t[5] == t[3] || t[5] == t[2] || t[5] == t[1] || t[5] == cntTour.p[3]) continue;
+			if (dist[t[3]][t[4]] - dist[t[4]][t[5]] <= 0 || inX[t[4]][t[5]]) continue;
+			inY[t[4]][t[5]] = inY[t[5]][t[4]] = 1;
+			int lt = findIndex(cntTour.p, t[5]);
+			cntTour.length -= (dist[t[3]][t[4]] - dist[t[4]][t[5]]);
+			if (choose(3, lt)) return 1;
+			inY[t[4]][t[5]] = inY[t[5]][t[4]] = 0;
+		}
+	}
+	return 0;
+}
+
+int main() {
+	// Get input.
+	getInput();
+
+	// Initialize
+	init();
+
+	while (1) {
+		int update = search(1);
+		if (!update) break;
 	}
 
 	printf("%0.5lf\n", bestTour.length);
-	for (i = 1; i <= n; i ++)
+	bestTour.p[0] = bestTour.p[n];
+	double sum = 0;
+	for (i = 1; i <= n; i ++) {
 		printf("%d ", bestTour.p[i]);
-	printf("\n");
+		sum += dist[bestTour.p[i]][bestTour.p[i-1]];
+	}
+	printf("\n%0.5lf\n", sum);
 	return 0;
 }
 
