@@ -10,8 +10,6 @@ int n;
 double x[MAXN], y[MAXN];
 double dist[MAXN][MAXN];
 
-int i, j, k;
-
 typedef struct Tour Tour;
 struct Tour {
 	int p[MAXN];
@@ -82,7 +80,7 @@ int findIndex(int* p, int u) {
 }
 
 void getInput() {
-	int i;
+	int i, j;
 	scanf("%d", &n);
 	for (i = 0; i < n; i ++) {
 		int id;
@@ -106,7 +104,7 @@ void init() {
 	for (i = 1; i <= n; i ++) {
 		bestTour.p[i] = i;
 	}
-	srand(time(NULL));
+	srand(time(NULL)+myid);
 	for (i = 1; i < n; i++) {
 		pos = i + rand() % (n - i + 1);
 		swap(bestTour.p + i, bestTour.p + pos);
@@ -157,6 +155,7 @@ int choose(int i, int lt) {
 }
 
 int search(int i) {
+	int j, k;
 	if (i == 1) {
 		for (t[1] = 1; t[1] <= n; t[1] ++) {
 			memset(inX, 0, sizeof(inX));
@@ -204,9 +203,6 @@ int search(int i) {
 	return 0;
 }
 
-
-
-
 int main(int argc, char** argv) {
 
 	double begin, end;
@@ -217,38 +213,57 @@ int main(int argc, char** argv) {
 	if (myid == 0) {
 		// Get input.
 		getInput();
+		begin = MPI_Wtime();
 	}
 
-	//brocast n
+	//brodcast n
 	MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	//brocast dist
+	//brodcast dist
 	MPI_Bcast(dist, MAXN * MAXN, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+	//brodcast nearest
+	MPI_Bcast(nearest, MAXN * MAXN, MPI_INT, 0, MPI_COMM_WORLD);
+	
 
+	Tour gBestTour;
+
+	int i, j;
 	for (i = 0; i < 10; i++) {
 		// Initialize
 		init();
+		if (myid == 0 && i == 0) gBestTour = bestTour;
 		while (1) {
+			/*printf("#%d: update, len = %lf\n", myid, bestTour.length);
+			for (j = 1; j <= n; j ++)
+				printf("%d ", bestTour.p[j]);
+			printf("\n");*/
 			int update = search(1);
 			if (!update) break;
 		}
+		//printf("#%d: over\n", myid);
 		// Reduce
 		if (myid != 0) {
 			MPI_Send(bestTour.p, MAXN, MPI_INT, 0, 0, MPI_COMM_WORLD);
-			MPI_Send(bestTour.length, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+			MPI_Send(&bestTour.length, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
 		} else {
+			if (bestTour.length < gBestTour.length)
+				gBestTour = bestTour;
 			for (j = 0; j < numprocs - 1; j++) {
-				MPI_Recv(recvTour.p, MAXN, MPI_INT, 0, 0, MPI_COMM_WORLD);
-				MPI_Recv(recvTour.length, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
-				if (recvTour.length < bestTour.length)
-					bestTour = recvTour;
+				MPI_Recv(recvTour.p, MAXN, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+				MPI_Recv(&recvTour.length, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
+				if (recvTour.length < gBestTour.length)
+					gBestTour = recvTour;
 			}
 		}
 	}
 
+	MPI_Barrier(MPI_COMM_WORLD);
+
 	if (myid == 0) {
-		printf("%0.5lf\n", bestTour.length);
+		end = MPI_Wtime();
+		printf("time:%lf\n", end - begin);
+		printf("%lf\n", gBestTour.length);
 		for (i = 1; i <= n; i ++) {
-			printf("%d ", bestTour.p[i]);
+			printf("%d ", gBestTour.p[i]);
 		}
 		printf("\n");
 	}
