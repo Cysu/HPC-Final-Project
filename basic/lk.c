@@ -2,6 +2,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <mpi.h>
 
 #define MAXN 1000
 
@@ -17,12 +18,15 @@ struct Tour {
 	double length;
 };
 
-Tour bestTour, cntTour, gBestTour;
+Tour bestTour, cntTour, recvTour;
 
 int nearest[MAXN][MAXN];
 int t[MAXN];
 int inX[MAXN][MAXN];
 int inY[MAXN][MAXN];
+
+int myid, numprocs;
+MPI_Status status;
 
 void swap(int* a, int* b) {
 	int temp;
@@ -44,8 +48,8 @@ void shift(int* p, int j) {
 
 void reorg(int* p, int j) {
 	int tmp[MAXN];
-	memcpy(tmp, p, sizeof(tmp));
 	int i;
+	memcpy(tmp, p, sizeof(tmp));
 	for (i = 2; i <= j - 1; i ++) {
 		p[i] = tmp[j - 1 - (i - 2)];
 	}
@@ -102,7 +106,7 @@ void init() {
 	bestTour.p[0] = n;
 	for (i = 1; i <= n; i ++) {
 		bestTour.p[i] = i;
-		bestTour.length += dist[bestTour.p[i]][bestTour.p[i-1]];
+		//bestTour.length += dist[bestTour.p[i]][bestTour.p[i-1]];
 	}
 	srand(time(NULL));
 	for (i = 1; i < n; i++) {
@@ -205,26 +209,52 @@ int search(int i) {
 
 
 
-int main() {
-	// Get input.
-	getInput();
+int main(int argc, char** argv) {
 
-	// Initialize
-	init();
-
-	while (1) {
-		int update = search(1);
-		if (!update) break;
+	double begin, end;
+	MPI_Init(&argc, &argv);
+	MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
+	MPI_Comm_rank(MPI_COMM_WORLD, &myid);
+	//init
+	if (myid == 0) {
+		// Get input.
+		getInput();
 	}
 
-	printf("%0.5lf\n", bestTour.length);
-	bestTour.p[0] = bestTour.p[n];
-	double sum = 0;
-	for (i = 1; i <= n; i ++) {
-		printf("%d ", bestTour.p[i]);
-		sum += dist[bestTour.p[i]][bestTour.p[i-1]];
+	//brocast n
+	MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	//brocast dist
+	MPI_Bcast(dist, MAXN * MAXN, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+	for (i = 0; i < 10; i++) {
+		// Initialize
+		init();
+		while (1) {
+			int update = search(1);
+			if (!update) break;
+		}
+		// Reduce
+		if (myid != 0) {
+			MPI_Send(bestTour.p, MAXN, MPI_INT, 0, 0, MPI_COMM_WORLD);
+			MPI_Send(bestTour.length, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+		} else {
+			for (j = 0; j < numprocs - 1; j++) {
+				MPI_Recv(recvTour.p, MAXN, MPI_INT, 0, 0, MPI_COMM_WORLD);
+				MPI_Recv(recvTour.length, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+				if (recvTour.length < bestTour.length)
+					bestTour = recvTour;
+			}
+		}
 	}
-	printf("\n%0.5lf\n", sum);
+
+	if (myid == 0) {
+		printf("%0.5lf\n", bestTour.length);
+		for (i = 1; i <= n; i ++) {
+			printf("%d ", bestTour.p[i]);
+		}
+	}
+
+	MPI_Finalize();
 	return 0;
 }
 
