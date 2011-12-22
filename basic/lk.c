@@ -99,10 +99,8 @@ void init() {
 	int i;
 	int pos;
 	bestTour.length = 0;
-	bestTour.p[0] = n;
 	for (i = 1; i <= n; i ++) {
 		bestTour.p[i] = i;
-		bestTour.length += dist[bestTour.p[i]][bestTour.p[i-1]];
 	}
 	srand(time(NULL));
 	for (i = 1; i < n; i++) {
@@ -219,12 +217,10 @@ int main() {
 
 	printf("%0.5lf\n", bestTour.length);
 	bestTour.p[0] = bestTour.p[n];
-	double sum = 0;
 	for (i = 1; i <= n; i ++) {
 		printf("%d ", bestTour.p[i]);
-		sum += dist[bestTour.p[i]][bestTour.p[i-1]];
 	}
-	printf("\n%0.5lf\n", sum);
+	printf("\n");
 	return 0;
 }
 
