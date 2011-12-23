@@ -1,4 +1,5 @@
 NAME : berlin52.opt.tour
+COMMENT : Length 7544
 TYPE : TOUR
 DIMENSION : 52
 TOUR_SECTION

@@ -5,6 +5,7 @@
 #include <mpi.h>
 
 #define MAXN 1000
+#define LOOPTIME 10
 
 int n;
 double x[MAXN], y[MAXN];
@@ -17,11 +18,13 @@ struct Tour {
 };
 
 Tour bestTour, cntTour, recvTour;
+Tour bestTours[11];
 
 int nearest[MAXN][MAXN];
 int t[MAXN];
 int inX[MAXN][MAXN];
 int inY[MAXN][MAXN];
+int fixed[MAXN][MAXN];
 
 int myid, numprocs;
 MPI_Status status;
@@ -203,8 +206,16 @@ int search(int i) {
 	return 0;
 }
 
-int main(int argc, char** argv) {
+int inTour(int* p, int u, int v) {
+	int i;
+	p[0] = p[n];
+	for (i = 1; i <= n; i ++)
+		if ((p[i] == u && p[i-1] == v) || (p[i] == v && p[i-1] == u))
+			return 1;
+	return 0;
+}
 
+int main(int argc, char** argv) {
 	double begin, end;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
@@ -222,20 +233,15 @@ int main(int argc, char** argv) {
 	MPI_Bcast(dist, MAXN * MAXN, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 	//brodcast nearest
 	MPI_Bcast(nearest, MAXN * MAXN, MPI_INT, 0, MPI_COMM_WORLD);
-	
 
 	Tour gBestTour;
 
-	int i, j;
-	for (i = 0; i < 10; i++) {
+	int i, j, k;
+	for (i = 0; i < LOOPTIME; i ++) {
 		// Initialize
 		init();
 		if (myid == 0 && i == 0) gBestTour = bestTour;
 		while (1) {
-			/*printf("#%d: update, len = %lf\n", myid, bestTour.length);
-			for (j = 1; j <= n; j ++)
-				printf("%d ", bestTour.p[j]);
-			printf("\n");*/
 			int update = search(1);
 			if (!update) break;
 		}
@@ -243,29 +249,51 @@ int main(int argc, char** argv) {
 		// Reduce
 		if (myid != 0) {
 			MPI_Send(bestTour.p, MAXN, MPI_INT, 0, 0, MPI_COMM_WORLD);
-			MPI_Send(&bestTour.length, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+			MPI_Send(&bestTour.length, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
 		} else {
 			if (bestTour.length < gBestTour.length)
 				gBestTour = bestTour;
 			for (j = 0; j < numprocs - 1; j++) {
 				MPI_Recv(recvTour.p, MAXN, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
-				MPI_Recv(&recvTour.length, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
-				if (recvTour.length < gBestTour.length)
-					gBestTour = recvTour;
+				MPI_Recv(&recvTour.length, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
+				if (recvTour.length < gBestTour.length)	gBestTour = recvTour;
+				if (recvTour.length < bestTour.length) bestTour = recvTour;
 			}
+			bestTours[i] = bestTour;
 		}
 	}
+
+	if (myid == 0) {
+		for (i = 1; i <= n; i ++)
+			for (j = i + 1; j <= n; j ++)
+				for (k = 0; k < LOOPTIME; k ++)
+					if (inTour(bestTours[k].p, i, j)) {
+						fixed[i][j] ++;
+						fixed[j][i] ++;
+					}
+		for (i = 1; i <= n; i ++)
+			for (j = i + 1; j <= n; j ++)
+				if (fixed[i][j] == LOOPTIME)
+					fixed[i][j] = 1;
+				else
+					fixed[i][j] = 0;
+	}
+	MPI_Bcast(fixed, MAXN * MAXN, MPI_INT, 0, MPI_COMM_WORLD);
 
 	MPI_Barrier(MPI_COMM_WORLD);
 
 	if (myid == 0) {
 		end = MPI_Wtime();
-		printf("time:%lf\n", end - begin);
-		printf("%lf\n", gBestTour.length);
+		printf("time = %lf\n", end - begin);
+		printf("len = %lf\n", gBestTour.length);
 		for (i = 1; i <= n; i ++) {
 			printf("%d ", gBestTour.p[i]);
 		}
 		printf("\n");
+		printf("fixed edges:\n");
+		for (i = 1; i <= n; i ++)
+			for (j = i + 1; j <= n; j ++)
+				if (fixed[i][j]) printf("(%d, %d)\n", i, j);
 	}
 
 	MPI_Finalize();
