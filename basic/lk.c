@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <mpi.h>
 
-#define MAXN 1000
-#define LOOPTIME 10
+#define MAXN 226
+#define LOOPTIME 100
 
 int n;
 double x[MAXN], y[MAXN];
@@ -18,7 +18,7 @@ struct Tour {
 };
 
 Tour bestTour, cntTour, recvTour;
-Tour bestTours[11];
+Tour bestTours[LOOPTIME];
 
 int nearest[MAXN][MAXN];
 int t[MAXN];
@@ -109,7 +109,7 @@ void init() {
 	for (i = 1; i <= n; i ++) {
 		bestTour.p[i] = i;
 	}
-	srand(time(NULL)+myid);
+	srand(time(NULL)+myid+loopRound*16);
 	for (i = 1; i < n; i++) {
 		pos = i + rand() % (n - i + 1);
 		swap(bestTour.p + i, bestTour.p + pos);
@@ -128,7 +128,6 @@ void init() {
 					fixedSum ++;
 				}
 	}
-	//if (myid == 0) printf("fixedSum = %d\n", fixedSum);
 }
 
 int choose(int i, int lt) {
@@ -253,25 +252,31 @@ int main(int argc, char** argv) {
 
 	int i, j, k;
 	for (loopRound = 0; loopRound < LOOPTIME; loopRound ++) {
-		// Initialize
-		init();
-		if (myid == 0 && loopRound == 0) gBestTour = bestTour;
-		while (1) {
-			int update = search(1);
-			if (!update) break;
+		Tour localBestTour;
+		for (i = 1; i <= 1; i ++) {
+			init();
+			if (myid == 0 && loopRound == 0 && i == 1) gBestTour = bestTour;
+			if (i == 1) localBestTour = bestTour;
+			while (1) {
+				int update = search(1);
+				if (!update) break;
+			}
+			if (bestTour.length < localBestTour.length) {
+				localBestTour = bestTour;
+			}
 		}
 		// Reduce
 		int changed = 0;
 		if (myid != 0) {
-			MPI_Send(bestTour.p, MAXN, MPI_INT, 0, 0, MPI_COMM_WORLD);
-			MPI_Send(&bestTour.length, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
+			MPI_Send(localBestTour.p, MAXN, MPI_INT, 0, 0, MPI_COMM_WORLD);
+			MPI_Send(&localBestTour.length, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
 			MPI_Recv(&changed, 1, MPI_INT, 0, 2, MPI_COMM_WORLD, &status);
 		} else {
-			if (bestTour.length < gBestTour.length)
-				gBestTour = bestTour;
+			if (localBestTour.length < gBestTour.length)
+				gBestTour = localBestTour;
 			for (i = 1; i <= n; i ++)
 				for (j = i + 1; j <= n; j ++)
-					if (inTour(bestTour.p, i, j)) {
+					if (inTour(localBestTour.p, i, j)) {
 						fixed[i][j] ++;
 						fixed[j][i] ++;
 					}
@@ -279,7 +284,7 @@ int main(int argc, char** argv) {
 				MPI_Recv(recvTour.p, MAXN, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &status);
 				MPI_Recv(&recvTour.length, 1, MPI_DOUBLE, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, &status);
 				if (recvTour.length < gBestTour.length)	gBestTour = recvTour;
-				if (recvTour.length < bestTour.length) bestTour = recvTour;
+				if (recvTour.length < localBestTour.length) localBestTour = recvTour;
 				for (i = 1; i <= n; i ++)
 					for (j = i + 1; j <= n; j ++)
 						if (inTour(recvTour.p, i, j)) {
@@ -294,7 +299,6 @@ int main(int argc, char** argv) {
 				MPI_Send(&changed, 1, MPI_INT, j, 2, MPI_COMM_WORLD);
 		}
 		MPI_Bcast(fixed, MAXN * MAXN, MPI_INT, 0, MPI_COMM_WORLD);
-		if (loopRound > 0 && !changed) break;
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
