@@ -26,6 +26,7 @@ int inX[MAXN][MAXN];
 int inY[MAXN][MAXN];
 int initY[MAXN][MAXN];
 int fixed[MAXN][MAXN];
+int fixedEdges[MAXN][2];
 
 int loopRound;
 int myid, numprocs;
@@ -119,14 +120,10 @@ void init() {
 		bestTour.length += dist[bestTour.p[i]][bestTour.p[i-1]];
 	}
 	memset(initY, 0, sizeof(initY));
-	int fixedSum = 0;
-	if (loopRound > 0) {
-		for (i = 1; i <= n; i ++)
-			for (j = 1; j <= n; j ++)
-				if (fixed[i][j] >= loopRound * numprocs) {
-					initY[i][j] = 1;
-					fixedSum ++;
-				}
+	for (i = 0; i < MAXN; i ++) {
+		if (fixedEdges[i][0] == 0 && fixedEdges[i][1] == 0) break;
+		int u = fixedEdges[i][0], v= fixedEdges[i][1];
+		initY[u][v] = initY[v][u] = 1;
 	}
 }
 
@@ -297,8 +294,18 @@ int main(int argc, char** argv) {
 			if (loopRound > 0 && fabs(bestTours[loopRound].length - bestTours[loopRound-1].length) > 1e-3) changed = 1;
 			for (j = 1; j < numprocs; j++)
 				MPI_Send(&changed, 1, MPI_INT, j, 2, MPI_COMM_WORLD);
+			k = 0;
+			memset(fixedEdges, 0, sizeof(fixedEdges));
+			for (i = 1; i <= n; i ++)
+				for (j = i + 1; j <= n; j ++) {
+					if (fixed[i][j] == (loopRound + 1) * numprocs) {
+						fixedEdges[k][0] = i;
+						fixedEdges[k][1] = j;
+						k ++;
+					}
+				}
 		}
-		MPI_Bcast(fixed, MAXN * MAXN, MPI_INT, 0, MPI_COMM_WORLD);
+		MPI_Bcast(fixedEdges, MAXN * 2, MPI_INT, 0, MPI_COMM_WORLD);
 	}
 
 	MPI_Barrier(MPI_COMM_WORLD);
