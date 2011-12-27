@@ -1,8 +1,8 @@
-DataSet		Opt		Ret
-berlin52	7544		7544
-ch130		6110		6110
-ch150		6531		6531
-tsp225		3859		3888
+DataSet		Opt			Ret		Time(s)
+berlin52	7544		7544	2.445
+ch130		6110		6110	12.817
+ch150		6531		6531	15.773
+tsp225		3859		3888	54.634
 
 
 based on ch150
