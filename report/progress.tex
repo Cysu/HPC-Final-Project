@@ -1,0 +1,184 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage{amsmath,amsfonts,amsthm,amssymb}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage[colorlinks]{hyperref}
+\usepackage{extramarks}
+\usepackage{chngpage}
+\usepackage{soul,color}
+\usepackage{enumerate}
+\usepackage{graphicx,float,wrapfig}
+\usepackage{subfig}
+\usepackage{listings}
+\usepackage{xltxtra}
+\usepackage{xeCJK}
+\usepackage{xunicode}
+\usepackage{fontspec}
+
+\newcommand{\Class}{High Performance Computing}
+\newcommand{\ClassInstructor}{Xiaoge Wang}
+\newcommand{\Title}{Progress Report}
+\newcommand{\DueDate}{2011.12.13}
+\newcommand{\StudentName}{Tong Xiao, Jiaxin Mao, Zhen Ru}
+\newcommand{\StudentClass}{CST92}
+\newcommand{\StudentNumber}{}
+
+%\setmainfont[Mapping=tex-text]{Adobe Song Std}
+%\setCJKmainfont{Microsoft YaHei}
+\punctstyle{quanjiao}
+
+% In case you need to adjust margins:
+\topmargin=-0.45in      %
+\evensidemargin=0in     %
+\oddsidemargin=0in      %
+\textwidth=6.5in        %
+\textheight=9.0in       %
+\headsep=0.25in         %
+
+% Setup the header and footer
+\pagestyle{fancy}                                                       %
+\lhead{\StudentName}                                                 %
+\chead{\Title}  %
+\rhead{\firstxmark}                                                     %
+\lfoot{\lastxmark}                                                      %
+\cfoot{}                                                                %
+\rfoot{Page\ \thepage\ of\ \protect\pageref{LastPage}}                          %
+\renewcommand\headrulewidth{0.4pt}                                      %
+\renewcommand\footrulewidth{0.4pt}                                      %
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Some tools
+\newcommand{\enterProblemHeader}[1]{\nobreak\extramarks{#1}{#1 continued on next page\ldots}\nobreak%
+                                    \nobreak\extramarks{#1 (continued)}{#1 continued on next page\ldots}\nobreak}%
+\newcommand{\exitProblemHeader}[1]{\nobreak\extramarks{#1 (continued)}{#1 continued on next page\ldots}\nobreak%
+                                   \nobreak\extramarks{#1}{}\nobreak}%
+
+\newcommand{\homeworkProblemName}{}%
+\newcounter{homeworkProblemCounter}%
+\newenvironment{homeworkProblem}[1][Problem \arabic{homeworkProblemCounter}]%
+  {\stepcounter{homeworkProblemCounter}%
+   \renewcommand{\homeworkProblemName}{#1}%
+   \section*{\homeworkProblemName}%
+   \enterProblemHeader{\homeworkProblemName}}%
+  {\exitProblemHeader{\homeworkProblemName}}%
+
+\newcommand{\homeworkSectionName}{}%
+\newlength{\homeworkSectionLabelLength}{}%
+\newenvironment{homeworkSection}[1]%
+  {% We put this space here to make sure we're not connected to the above.
+
+   \renewcommand{\homeworkSectionName}{#1}%
+   \settowidth{\homeworkSectionLabelLength}{\homeworkSectionName}%
+   \addtolength{\homeworkSectionLabelLength}{0.25in}%
+   \changetext{}{-\homeworkSectionLabelLength}{}{}{}%
+   \subsection*{\homeworkSectionName}%
+   \enterProblemHeader{\homeworkProblemName\ [\homeworkSectionName]}}%
+  {\enterProblemHeader{\homeworkProblemName}%
+
+   % We put the blank space above in order to make sure this margin
+   % change doesn't happen too soon.
+   \changetext{}{+\homeworkSectionLabelLength}{}{}{}}%
+
+\newcommand{\Answer}{\ \\\textbf{Answer:} }
+\newcommand{\Acknowledgement}[1]{\ \\{\bf Acknowledgment:} #1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Make title
+\title{\textmd{\bf \Class: \Title}\\{\large Instructed by: \textit{\ClassInstructor}}\\\normalsize\vspace{0.1in}\small{Due on: \DueDate}}
+\date{}
+\author{\StudentName\ \ \StudentClass\ \ \StudentNumber}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+\begin{spacing}{1.1}
+\maketitle \thispagestyle{empty}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{homeworkProblem}[Brief introduction]
+During the past two weeks, we had got a brief view of the Traveling Salesman Problem(TSP). We now clearly know the following issues:
+\begin{enumerate}
+\item The ways to find an exact solution.
+\item The ways to find an approximate solution.
+\item How to checkout a solution to be optimal?
+\item Where are the test data?
+\end{enumerate}
+Details will be described next.
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Exact algorithms]
+\begin{enumerate}
+\item Dynamic programming\\
+		Suppose the tour start at city 1. Let $f(S,v)$ be the minimum length of the path, which started from city 1, visited all the cities in $S$ by once, and finally arrived at city $v$. So we get $$f(S,v)=f(S-v,u)+dist(u,v),u\in S-v$$ The answer should be $$min\{f(V,v)+dist(v,1)\},v\neq 1$$ Here $V$ is the set of all cities.\\
+		The algorithm will solve the problem in time $O(n^2 2^n)$. But the memory is the limitation.\\
+\item Cutting-Plane method\\
+		It's an algorithm using linear programming. It was published by Dantzig, Fulkerson and Johnson. The idea is that we'd like to find$$min\{c^Tx\}$$ Here $c^T$ denotes the cost vector, $x$ denotes the vector of the selection edges.\\
+		We can add some constraints to it. Every constraint can be expressed by $Ax\leq b$. For example, $A=I,b=(1,1,\dots,1)^T$, limits $x_i<=1$. By analyzing the result, we can find more constraints. Thus we can finally get the optimal solution.\\
+		The algorithm need to use simplex method to solve the linear programming problem. We don't know much on it so far.
+\end{enumerate}
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Approximate algorithms]
+There are many different algorithms in this area. The most commonly used are genetic algorithm and simulated annealing algorithm. Both are easily to be paralleled. We will implement one of them and find out how better the solution could be compared to sequential algorithm under a same period of time.
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Checkout a solution]
+There is a naive idea to get a quite good lower bound. First, we can draw a disk with a radius r centered at each city so that it does not consist of any other cities. Thus we get radius $r_1, r_2,\dots, r_n$. The lower bound can be calculated as $\displaystyle 2\sum_{i=1}^{n}r_i$. To make this bound better, we can change it into a linear programming problem by adding some constraints. Figure~\ref{lb1} shows an example.\\
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.8\textwidth]{lb1.png}
+\caption{Lower bound}
+\label{lb1}
+\end{figure}
+There is still some space to be optimized. Given a set of connected disks, we can expand a region until reach another region. Figure~\ref{lb2} shows this optimization clearly.
+\begin{figure}[h!]
+\centering
+\subfloat[Expand region]{\includegraphics[width=0.3\textwidth]{lb2.png}}
+\subfloat[An example]{\includegraphics[width=0.7\textwidth]{lb3.png}}
+\caption{Optimization of lower bound}
+\label{lb2}
+\end{figure} 
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Test data]
+There is a website for TSP data sets. For each data set, it tells the location of every city. The format of a 16 cities data set is shown below.
+\lstset{language=C}{\singlespacing\texttt{\lstinputlisting{ulysses16.tsp}}}
+The number of cities ranges from 16 to 85900 on this website. And there gives exact solutions to some specific data sets.
+There are some interesting data sets with graphical view. Such as Mona-Lisa's TSP and Chinese TSP which are shown as figure~\ref{fig1}. However, the solution is not optimal.
+\begin{figure}[h!]
+\centering
+\subfloat[Mona-Lisa, 100k points]{\includegraphics[width=0.5\textwidth]{mona-lisa100K.png}}
+\subfloat[Chinese Map, 71,009 cities]{\includegraphics[width=0.5\textwidth]{chtour.png}}
+\caption{Graphical views of some data sets}
+\label{fig1}
+\end{figure}
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[Future works]
+Till now, every one of us has got a general idea of TSP. We did the works together so that we can understand the algorithms more quickly. In the next two weeks, we'll focus on implementing such algorithms and testing for the performance. The major tasks are
+\begin{center}
+\begin{tabular}{|l|p{0.6\textwidth}|}
+\hline
+Zhen Ru & Implement parallel GA and see how better the solution can be compared to the sequential one under a same period of time.\\
+\hline
+Jiaxin Mao, Tong Xiao & Implement parallel cutting-plane algorithm to solve TSP with quite many cities, e.g. $n >= 100$.\\
+\hline
+\end{tabular}
+\end{center}
+\end{homeworkProblem}
+
+\begin{homeworkProblem}[References]
+\begin{enumerate}
+\item \url{http://www.tsp.gatech.edu}
+\item \url{http://comopt.ifi.uni-heidelberg.de/software/TSPLIB9}
+\item \url{http://en.wikipedia.org/wiki/Travelling\_salesman\_problem}
+\item Parallel Heuristics for TSP on MapReduce \textit{Siddhartha Jain, Matthew Mallozzi}
+\end{enumerate}
+\end{homeworkProblem}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{spacing}
+\end{document}
